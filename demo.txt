@@ -1,0 +1,16 @@
+http://www.example.com/
+https://www.example.com/
+https://www.example.com/privacy-policy
+https://www.example.com/about
+https://www.example.com/product/123
+https://www.example.com/product/123?is_debug=true
+https://www.example.com/product/456?is_debug=true
+https://www.example.com/product/456
+https://www.example.com/product/456?is_debug=true&main=true
+https://www.example.com/product/456?foo=bar&main=true
+https://www.example.com/category/watches
+https://www.example.com/category/shirts
+https://www.example.com/category/hidden.html
+https://www.example.com/category/image.jpg
+https://www.example.com/category/picture.gif
+https://www.example.com/category/index.php

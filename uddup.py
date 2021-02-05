@@ -13,21 +13,30 @@ if is_windows:
     # Windows deserves coloring too :D
     G = '\033[92m'  # green
     Y = '\033[93m'  # yellow
-    B = '\033[94m'  # blue
-    R = '\033[91m'  # red
     W = '\033[0m'   # white
     try:
         import win_unicode_console, colorama
         win_unicode_console.enable()
         colorama.init()
     except:
-        G = Y = B = R = W = G = Y = B = R = W = ''
+        G = Y = W = ''
 else:
     G = '\033[92m'  # green
     Y = '\033[93m'  # yellow
-    B = '\033[94m'  # blue
-    R = '\033[91m'  # red
     W = '\033[0m'   # white
+
+
+def banner():
+    print("""%s
+  _   _ ____      _             
+ | | | |  _ \  __| |_   _ _ __  
+ | | | | | | |/ _` | | | | '_ \ 
+ | |_| | |_| | (_| | |_| | |_) |
+  \___/|____/ \__,_|\__,_| .__/ 
+                         |_|    
+
+              %s# Coded By @2RS3C
+    %s""" % (Y, G, W))
 
 
 def file_arg(path):
@@ -35,15 +44,6 @@ def file_arg(path):
     if not os.path.isfile(path):
         raise ValueError  # or TypeError, or `argparse.ArgumentTypeError
     return path
-
-
-def banner():
-    print("""%s                                        
- 
-'---'%s%s
-
-              # Coded By Rotem Reiss - @2RS3C
-    """ % (B, W, B))
 
 
 def get_ignored_suffixes():
@@ -92,6 +92,7 @@ def get_web_suffixes():
         'jspx',
         'wss',
         'action',
+        'php',
         'php4',
         'php5',
         'py',
@@ -111,26 +112,43 @@ def get_web_suffixes():
     )
 
 
-def is_url_pattern_exists(pattern):
+def get_existing_pattern_urls(pattern):
+    results = []
     for uurl in unique_urls:
-        uurl_path = urlparse(uurl).path.strip('/')
+        uurl_path = uurl.path.strip('/')
         if uurl_path.startswith(pattern):
-            return True
+            results.append(uurl)
 
-    return False
+    return results
 
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Remove URL pattern duplications..')
+def get_query_params_keys(parsed_url_query):
+    keys = []
+    qparams = parsed_url_query.split('&')
+    for q in qparams:
+        keys.append(q.split('=')[0])
 
-    # Add the arguments
-    parser.add_argument('-u', '--urls', help='File with a list of urls.', type=file_arg, dest='urls_file')
-    args = parser.parse_args()
+    return keys
 
-    # Print our banner
-    banner()
 
-    unique_urls = set()
+def is_all_params_exists(old_pattern, new_pattern):
+    old_params_keys = get_query_params_keys(old_pattern.query)
+    new_params_keys = get_query_params_keys(new_pattern.query)
+
+    for k in old_params_keys:
+        if k not in new_params_keys:
+            return False
+
+    return True
+
+
+def has_more_params(old_pattern, new_pattern):
+    old_params_keys = get_query_params_keys(old_pattern.query)
+    new_params_keys = get_query_params_keys(new_pattern.query)
+    return len(new_params_keys) > len(old_params_keys)
+
+
+def main():
     web_suffixes = get_web_suffixes()
     ignored_suffixes = get_ignored_suffixes()
     # Iterate over the given domains
@@ -148,27 +166,77 @@ if __name__ == "__main__":
             # If the URL doesn't have a path, just add it as is
             # @todo Some dups can still occur, handle it
             if not url_path:
-                unique_urls.add(url)
+                unique_urls.add(parsed_url)
                 continue
 
             # Do not add paths to common files
             if url_path.endswith(ignored_suffixes):
                 continue
 
-            # Add as-is paths that points to a specific web extension (e.g. html)
+            # Add as-is paths that points to a specific web extension (e.g. html).
             if url_path.endswith(web_suffixes):
-                unique_urls.add(url)
+                unique_urls.add(parsed_url)
                 continue
 
             # Do the more complicated ddup work
             path_parts = url_path.split('/')
             if len(path_parts) == 1:
-                unique_urls.add(url)
+                unique_urls.add(parsed_url)
                 continue
 
             url_pattern = '/'.join(path_parts[:-1])
-            if not is_url_pattern_exists(url_pattern):
-                unique_urls.add(url)
+            # Get existing URL patterns from our unique patterns.
+            existing_pattern_urls = get_existing_pattern_urls(url_pattern)
+            if not existing_pattern_urls:
+                unique_urls.add(parsed_url)
+            elif parsed_url.query:
+                for u in existing_pattern_urls:
+                    # Favor URL patterns with params over those without params.
+                    if not u.query:
+                        unique_urls.remove(u)
+                        unique_urls.add(parsed_url)
+                        continue
 
-    for url in unique_urls:
-        print (url)
+                    # Check if it has query params that are extra to the unique URL pattern.
+                    if is_all_params_exists(u, parsed_url):
+                        if has_more_params(u, parsed_url):
+                            unique_urls.remove(u)
+                            unique_urls.add(parsed_url)
+                            continue
+                    else:
+                        unique_urls.add(parsed_url)
+                        continue
+
+
+def print_results():
+    if args.output:
+        try:
+            f = open(args.output, "w")
+
+            for url in sorted(unique_urls):
+                u = url.geturl()
+                f.write(u + "\n")
+                print(u)
+
+            f.close()
+        except:
+            print('[X] Failed to save the output to a file.')
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description='Remove URL pattern duplications..')
+
+    # Add the arguments
+    parser.add_argument('-u', '--urls', help='File with a list of urls.', type=file_arg, dest='urls_file')
+    parser.add_argument('-o', '--output', help='Save results to a file.', dest='output')
+    parser.add_argument('-s', '--silent', help='Print only the result URLs.', action='store_true', dest='silent')
+    args = parser.parse_args()
+
+    # Every tool needs a banner.
+    if not args.silent:
+        banner()
+
+    unique_urls = set()
+    main()
+
+    print_results()

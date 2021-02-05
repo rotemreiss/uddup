@@ -29,6 +29,12 @@ Take a look at `demo.txt` which is the raw URLs file which results in `demo-resu
 ---
 
 ## Installation
+### With pip (Recommended)
+```bash
+pip3 install uddup
+```
+
+### Manual (from code)
 ```bash
 # Clone the repository.
 git clone https://github.com/rotemreiss/uddup.git
@@ -41,7 +47,7 @@ pip install -r requirements.txt
 ---
 ## Usage
 
-`python uddup/main.py -u demo.txt -o ./demo-result.txt`
+`uddup -u demo.txt -o ./demo-result.txt`
 
 ### More Usage Options
 

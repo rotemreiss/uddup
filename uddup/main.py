@@ -112,9 +112,9 @@ def get_web_suffixes():
     )
 
 
-def get_existing_pattern_urls(pattern):
+def get_existing_pattern_urls(pattern, uurls):
     results = []
-    for uurl in unique_urls:
+    for uurl in uurls:
         uurl_path = uurl.path.strip('/')
         if uurl_path.startswith(pattern):
             results.append(uurl)
@@ -148,11 +148,17 @@ def has_more_params(old_pattern, new_pattern):
     return len(new_params_keys) > len(old_params_keys)
 
 
-def main():
+def main(urls_file, output, silent):
+    unique_urls = set()
+
+    # Every tool needs a banner.
+    if not silent:
+        banner()
+
     web_suffixes = get_web_suffixes()
     ignored_suffixes = get_ignored_suffixes()
     # Iterate over the given domains
-    with open(args.urls_file, 'r') as f:
+    with open(urls_file, 'r') as f:
         for url in f:
             url = url.rstrip()
             if not url:
@@ -186,7 +192,7 @@ def main():
 
             url_pattern = '/'.join(path_parts[:-1])
             # Get existing URL patterns from our unique patterns.
-            existing_pattern_urls = get_existing_pattern_urls(url_pattern)
+            existing_pattern_urls = get_existing_pattern_urls(url_pattern, unique_urls)
             if not existing_pattern_urls:
                 unique_urls.add(parsed_url)
             elif parsed_url.query:
@@ -207,13 +213,16 @@ def main():
                         unique_urls.add(parsed_url)
                         continue
 
+    print_results(unique_urls, output)
+    return unique_urls
 
-def print_results():
-    if args.output:
+
+def print_results(uurls, output):
+    if output:
         try:
-            f = open(args.output, "w")
+            f = open(output, "w")
 
-            for url in sorted(unique_urls):
+            for url in sorted(uurls):
                 u = url.geturl()
                 f.write(u + "\n")
                 print(u)
@@ -221,9 +230,13 @@ def print_results():
             f.close()
         except:
             print('[X] Failed to save the output to a file.')
+    else:
+        for url in sorted(uurls):
+            u = url.geturl()
+            print(u)
 
 
-if __name__ == "__main__":
+def interactive():
     parser = argparse.ArgumentParser(description='Remove URL pattern duplications..')
 
     # Add the arguments
@@ -232,11 +245,8 @@ if __name__ == "__main__":
     parser.add_argument('-s', '--silent', help='Print only the result URLs.', action='store_true', dest='silent')
     args = parser.parse_args()
 
-    # Every tool needs a banner.
-    if not args.silent:
-        banner()
+    main(args.urls_file, args.output, args.silent)
 
-    unique_urls = set()
-    main()
 
-    print_results()
+if __name__ == "__main__":
+    interactive()

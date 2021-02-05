@@ -41,7 +41,7 @@ pip install -r requirements.txt
 ---
 ## Usage
 
-`python uddup.py -u demo.txt -o ./demo-result.txt`
+`python uddup/main.py -u demo.txt -o ./demo-result.txt`
 
 ### More Usage Options
 

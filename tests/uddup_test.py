@@ -1,13 +1,15 @@
-import unittest
+#!/usr/bin/python
+# coding=utf-8
+from urllib.parse import urlparse
+import uddup.main
+import pytest
 
+def test_uddup_main():
+    existing_urls = uddup.main.main("./demo.txt", "", True)
 
-class TestSum(unittest.TestCase):
+    expected_result = set()
+    with open("./demo-result.txt", 'r') as f:
+        for url in f:
+            expected_result.add(urlparse(url.rstrip()))
 
-    def test_sum(self):
-        self.assertEqual(sum([1, 2, 3]), 6, "Should be 6")
-
-    def test_sum_tuple(self):
-        self.assertEqual(sum((1, 2, 2)), 6, "Should be 6")
-
-if __name__ == '__main__':
-    unittest.main()
+    assert existing_urls == expected_result

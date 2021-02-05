@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setup(
     name="uddup",
-    version="0.9",
+    version="0.9.1",
     author="Rotem Reiss",
     author_email="reiss.r@gmail.com",
     description="URLs Deduplication Tool.",

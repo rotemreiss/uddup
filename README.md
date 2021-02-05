@@ -10,8 +10,8 @@ https://www.example.com/product/456
 https://www.example.com/product/123?is_prod=false
 https://www.example.com/product/222?is_debug=true
 ```
-All the above, are probably points to the same product "template", and therefore
-should only be scanned once by most web-scanners.
+All the above are probably points to the same product "template".
+Therefore it should be enough to scan only some of these URLs by our various scanners.
 
 The result of the above after UDdup should be:
 ```
@@ -20,7 +20,7 @@ https://www.example.com/product/222?is_debug=true
 ```
 
 ## Why do I need it?
-Mostly for better reconnaissance process,
+Mostly for better (automated) reconnaissance process,
 with less noise (for both the tester and the target).
 
 ## Examples
@@ -28,6 +28,17 @@ Take a look at `demo.txt` which is the raw URLs file which results in `demo-resu
 
 ---
 
+## Installation
+```bash
+# Clone the repository.
+git clone https://github.com/rotemreiss/uddup.git
+
+# Install the Python requirements.
+cd uddup
+pip install -r requirements.txt
+```
+
+---
 ## Usage
 
 `python uddup.py -u demo.txt -o ./demo-result.txt`

@@ -31,7 +31,7 @@ Take a look at `demo.txt` which is the raw URLs file which results in `demo-resu
 ## Installation
 ### With pip (Recommended)
 ```bash
-pip3 install uddup
+pip install uddup
 ```
 
 ### Manual (from code)

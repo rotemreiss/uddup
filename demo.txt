@@ -18,3 +18,5 @@ https://www.example.com/category/hidden.html
 https://www.example.com/category/image.jpg
 https://www.example.com/category/picture.gif
 https://www.example.com/category/index.php
+https://www.example2.com/product/123
+https://www.example2.com/product/2?is_prod=true

@@ -112,11 +112,28 @@ def get_web_suffixes():
     )
 
 
-def get_existing_pattern_urls(pattern, uurls):
+def get_existing_pattern_urls(purl, uurls):
     results = []
+
+    url_path = get_url_path(purl)
+    path_parts = url_path.split('/')
+
+    # If there is only one path, return empty list.
+    if len(path_parts) == 1:
+        return results
+
+    url_pattern = '/'.join(path_parts[:-1])
+
+    url_schema = purl.scheme
+    url_hostname = purl.hostname
+
     for uurl in uurls:
-        uurl_path = uurl.path.strip('/')
-        if uurl_path.startswith(pattern):
+        # Skip different hostname and schemes (they can't be a match).
+        if uurl.scheme != url_schema or uurl.hostname != url_hostname:
+            continue
+
+        uurl_path = get_url_path(uurl)
+        if uurl_path.startswith(url_pattern):
             results.append(uurl)
 
     return results
@@ -148,6 +165,10 @@ def has_more_params(old_pattern, new_pattern):
     return len(new_params_keys) > len(old_params_keys)
 
 
+def get_url_path(purl):
+    return purl.path.strip('/')
+
+
 def main(urls_file, output, silent):
     unique_urls = set()
 
@@ -166,16 +187,16 @@ def main(urls_file, output, silent):
 
             parsed_url = urlparse(url)
 
-            # @todo Reconsider the rstrip, since it can remove some interesting urls
-            url_path = parsed_url.path.strip('/')
+            # @todo Reconsider the strip, since it can remove some interesting urls
+            url_path = get_url_path(parsed_url)
 
-            # If the URL doesn't have a path, just add it as is
+            # If the URL doesn't have a path, just add it as is.
             # @todo Some dups can still occur, handle it
             if not url_path:
                 unique_urls.add(parsed_url)
                 continue
 
-            # Do not add paths to common files
+            # Do not add paths to common files.
             if url_path.endswith(ignored_suffixes):
                 continue
 
@@ -184,15 +205,9 @@ def main(urls_file, output, silent):
                 unique_urls.add(parsed_url)
                 continue
 
-            # Do the more complicated ddup work
-            path_parts = url_path.split('/')
-            if len(path_parts) == 1:
-                unique_urls.add(parsed_url)
-                continue
-
-            url_pattern = '/'.join(path_parts[:-1])
+            # Do the more complicated ddup work.
             # Get existing URL patterns from our unique patterns.
-            existing_pattern_urls = get_existing_pattern_urls(url_pattern, unique_urls)
+            existing_pattern_urls = get_existing_pattern_urls(parsed_url, unique_urls)
             if not existing_pattern_urls:
                 unique_urls.add(parsed_url)
             elif parsed_url.query:

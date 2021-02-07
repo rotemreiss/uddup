@@ -3,6 +3,7 @@
 import argparse
 import sys
 import os
+import re
 from urllib.parse import urlparse
 
 # Check if we are running this on windows platform
@@ -169,7 +170,7 @@ def get_url_path(purl):
     return purl.path.strip('/')
 
 
-def main(urls_file, output, silent):
+def main(urls_file, output, silent, filter_path):
     unique_urls = set()
 
     # Every tool needs a banner.
@@ -198,6 +199,10 @@ def main(urls_file, output, silent):
 
             # Do not add paths to common files.
             if url_path.endswith(ignored_suffixes):
+                continue
+
+            # Filter paths by custom Regex if set.
+            if filter_path and re.search(filter_path, url_path):
                 continue
 
             # Add as-is paths that points to a specific web extension (e.g. html).
@@ -255,12 +260,13 @@ def interactive():
     parser = argparse.ArgumentParser(description='Remove URL pattern duplications..')
 
     # Add the arguments
-    parser.add_argument('-u', '--urls', help='File with a list of urls.', type=file_arg, dest='urls_file')
+    parser.add_argument('-u', '--urls', help='File with a list of urls.', type=file_arg, dest='urls_file', required=True)
     parser.add_argument('-o', '--output', help='Save results to a file.', dest='output')
     parser.add_argument('-s', '--silent', help='Print only the result URLs.', action='store_true', dest='silent')
+    parser.add_argument('-fp', '--filter-path', help='Filter paths by a given Regex.', dest='filter_path')
     args = parser.parse_args()
 
-    main(args.urls_file, args.output, args.silent)
+    main(args.urls_file, args.output, args.silent, args.filter_path)
 
 
 if __name__ == "__main__":

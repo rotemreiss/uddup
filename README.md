@@ -50,6 +50,7 @@ pip install -r requirements.txt
 `uddup -u demo.txt -o ./demo-result.txt`
 
 ### More Usage Options
+`uddup -h`
 
 Short Form    | Long Form            | Description
 ------------- | -------------------- |-------------
@@ -57,7 +58,35 @@ Short Form    | Long Form            | Description
 -u			  | --urls				 | File with a list of urls
 -o			  | --output			 | Save results to a file
 -s			  | --silent			 | Print only the result URLs
+-fp           | --filter-path        | Filter paths by a given Regex
 
+### Filter Paths by Regex
+Allows filtering custom paths pattern.
+For example, if we would like to filter all paths that starts with `/product` we will need to run:
+```bash
+# Single Regex
+uddup -u demo.txt -fp "^product"
+```
+
+**Input:**
+```bash
+https://www.example.com/
+https://www.example.com/privacy-policy
+https://www.example.com/product/1
+https://www.example2.com/product/2
+https://www.example3.com/product/4
+```
+
+**Output:**
+```bash
+https://www.example.com/
+https://www.example.com/privacy-policy
+```
+
+### Advanced Regex with multiple path filters
+```bash
+uddup -u demo.txt -fp "(^product)|(^category)"
+```
 ---
 ## Contributing
 Feel free to fork the repository and submit pull-requests.

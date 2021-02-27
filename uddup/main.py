@@ -180,7 +180,7 @@ def main(urls_file, output, silent, filter_path):
     web_suffixes = get_web_suffixes()
     ignored_suffixes = get_ignored_suffixes()
     # Iterate over the given domains
-    with open(urls_file, 'r') as f:
+    with open(urls_file, 'r', encoding="utf-8") as f:
         for url in f:
             url = url.rstrip()
             if not url:

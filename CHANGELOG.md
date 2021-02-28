@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.9.3 (28/02/2021)
+### Bug Fixes:
+
+- [#5](https://github.com/rotemreiss/uddup/pull/5) Fix a bug with unicode char in urls (UTF-8 support)
+
 ## v0.9.2 (08/02/2021)
 
 #### Enhancements:

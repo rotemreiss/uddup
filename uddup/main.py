@@ -88,21 +88,21 @@ def get_query_params_keys(parsed_url_query):
     return keys
 
 
-def is_all_params_exists(old_pattern, new_pattern):
-    old_params_keys = get_query_params_keys(old_pattern.query)
-    new_params_keys = get_query_params_keys(new_pattern.query)
+def is_all_params_exists(needle, haystack):
+    needle_params_keys = get_query_params_keys(needle.query)
+    haystack_params_keys = get_query_params_keys(haystack.query)
 
-    for k in new_params_keys:
-        if k not in old_params_keys:
+    for k in haystack_params_keys:
+        if k not in needle_params_keys:
             return False
 
     return True
 
 
-def has_more_params(old_pattern, new_pattern):
-    old_params_keys = get_query_params_keys(old_pattern.query)
-    new_params_keys = get_query_params_keys(new_pattern.query)
-    return len(new_params_keys) > len(old_params_keys)
+def has_more_params(src_url, dst_url):
+    src_params_keys = get_query_params_keys(src_url.query)
+    dst_params_keys = get_query_params_keys(dst_url.query)
+    return len(src_params_keys) > len(dst_params_keys)
 
 
 def get_url_path(purl):
@@ -146,9 +146,6 @@ def ddup_urls_list(urls_list):
             unique_urls.add(parsed_url)
             continue
 
-        if new_pattern.path == '/product/5':
-            inn = True
-
         # Do the more complicated ddup work.
         # Get existing URL patterns from our unique patterns.
         existing_pattern_urls = get_existing_pattern_urls(parsed_url, unique_urls)
@@ -163,8 +160,8 @@ def ddup_urls_list(urls_list):
                     continue
 
                 # Check if it has query params that are extra to the unique URL pattern.
-                if is_all_params_exists(u, parsed_url):
-                    if has_more_params(u, parsed_url):
+                if is_all_params_exists(parsed_url, u):
+                    if has_more_params(parsed_url, u):
                         unique_urls.remove(u)
                         unique_urls.add(parsed_url)
                         continue

@@ -1,10 +1,14 @@
 #!/usr/bin/python
 # coding=utf-8
 import argparse
-import sys
 import os
 import re
+import sys
 from urllib.parse import urlparse
+import multiprocessing as mp
+from uddup.suffixes import web, ignored
+
+filter_path = None
 
 # Check if we are running this on windows platform
 is_windows = sys.platform.startswith('win')
@@ -47,72 +51,6 @@ def file_arg(path):
     return path
 
 
-def get_ignored_suffixes():
-    return (
-        'css',
-        'js',
-        'gif',
-        'jpg',
-        'png',
-        'jpeg',
-        'svg',
-        'xml',
-        'txt',
-        'json',
-        'ico',
-        'webp',
-        'otf',
-        'ttf',
-        'woff',
-        'woff2',
-        'eot',
-        'swf',
-        'zip',
-        'pdf',
-        'doc',
-        'ppt',
-        'docx',
-        'xls',
-        'xlsx',
-        'ogg',
-        'mp4',
-        'mp3',
-        'mov'
-    )
-
-
-def get_web_suffixes():
-    return (
-        'htm',
-        'html',
-        'xhtml',
-        'shtml',
-        'jhtml',
-        'cfm',
-        'jsp',
-        'jspx',
-        'wss',
-        'action',
-        'php',
-        'php4',
-        'php5',
-        'py',
-        'rb',
-        'pl',
-        'do',
-        'xml',
-        'rss',
-        'cgi',
-        'axd',
-        'asx',
-        'asmx',
-        'ashx',
-        'asp',
-        'aspx',
-        'dll'
-    )
-
-
 def get_existing_pattern_urls(purl, uurls):
     results = []
 
@@ -133,6 +71,7 @@ def get_existing_pattern_urls(purl, uurls):
         if uurl.scheme != url_schema or uurl.hostname != url_hostname:
             continue
 
+        # @todo Can we remove the 2nd get_url_path in ddup_urls_list?
         uurl_path = get_url_path(uurl)
         if uurl_path.startswith(url_pattern):
             results.append(uurl)
@@ -153,8 +92,8 @@ def is_all_params_exists(old_pattern, new_pattern):
     old_params_keys = get_query_params_keys(old_pattern.query)
     new_params_keys = get_query_params_keys(new_pattern.query)
 
-    for k in old_params_keys:
-        if k not in new_params_keys:
+    for k in new_params_keys:
+        if k not in old_params_keys:
             return False
 
     return True
@@ -170,69 +109,137 @@ def get_url_path(purl):
     return purl.path.strip('/')
 
 
-def main(urls_file, output, silent, filter_path):
+def get_parsed_url(url):
+    url = url.rstrip()
+    return urlparse(url)
+
+
+def ddup_urls_list(urls_list):
+    '''
+    Iterate over a list of (base) URLs and dedup it.
+    :param urls_list:
+    :return:
+    '''
     unique_urls = set()
+
+    for parsed_url in sorted(urls_list):
+
+        # @todo Reconsider the strip, since it can remove some interesting urls
+        url_path = get_url_path(parsed_url)
+
+        # If the URL doesn't have a path, just add it as is.
+        # @todo Some dups can still occur, handle it
+        if not url_path:
+            unique_urls.add(parsed_url)
+            continue
+
+        # Do not add paths to common files.
+        if url_path.endswith(ignored):
+            continue
+
+        # Filter paths by custom Regex if set.
+        if filter_path and re.search(filter_path, url_path):
+            continue
+
+        # Add as-is paths that points to a specific web extension (e.g. html).
+        if url_path.endswith(web):
+            unique_urls.add(parsed_url)
+            continue
+
+        if new_pattern.path == '/product/5':
+            inn = True
+
+        # Do the more complicated ddup work.
+        # Get existing URL patterns from our unique patterns.
+        existing_pattern_urls = get_existing_pattern_urls(parsed_url, unique_urls)
+        if not existing_pattern_urls:
+            unique_urls.add(parsed_url)
+        elif parsed_url.query:
+            for u in existing_pattern_urls:
+                # Favor URL patterns with params over those without params.
+                if not u.query:
+                    unique_urls.remove(u)
+                    unique_urls.add(parsed_url)
+                    continue
+
+                # Check if it has query params that are extra to the unique URL pattern.
+                if is_all_params_exists(u, parsed_url):
+                    if has_more_params(u, parsed_url):
+                        unique_urls.remove(u)
+                        unique_urls.add(parsed_url)
+                        continue
+                else:
+                    unique_urls.add(parsed_url)
+                    continue
+
+    return list(map(lambda url: url.geturl(), unique_urls))
+
+
+def is_same_domain(url_a, url_b):
+    '''
+    Checks whether the two given urls share the same domain and scheme.
+    :param url_a:
+    :param url_b:
+    :return: boolean
+    '''
+    return url_a.hostname == url_b.hostname and url_a.scheme == url_b.scheme
+
+
+def split_by_base_urls(urls_list):
+    # Sort the list so we will be able to split it to multi-processes per domain.
+    urls_by_base_url = []
+    urls_list.sort()
+    prev_url = None
+    cur_base_url_urls = set()
+    for url in urls_list:
+        parsed_url = get_parsed_url(url)
+
+        # If the URL is in different domain (and scheme) from the previous one, split to a new list.
+        if prev_url and not is_same_domain(prev_url, parsed_url):
+            urls_by_base_url.append(cur_base_url_urls)
+            cur_base_url_urls = set()
+
+        cur_base_url_urls.add(parsed_url)
+        prev_url = parsed_url
+
+    # Add the last set to our list.
+    urls_by_base_url.append(cur_base_url_urls)
+
+    return urls_by_base_url
+
+
+def main(urls_file, output, silent, filter_path_arg):
+    global filter_path
+    filter_path = filter_path_arg
 
     # Every tool needs a banner.
     if not silent:
         banner()
 
-    web_suffixes = get_web_suffixes()
-    ignored_suffixes = get_ignored_suffixes()
     # Iterate over the given domains
-    with open(urls_file, 'r', encoding="utf-8") as f:
-        for url in f:
-            url = url.rstrip()
-            if not url:
-                continue
+    urls_list = open(urls_file, 'r', encoding="utf-8").read().splitlines()
 
-            parsed_url = urlparse(url)
+    urls_by_base_url = split_by_base_urls(urls_list)
+    if not silent:
+        print('[-] The given list contains %d unique base URLs.' % (len(urls_by_base_url)))
 
-            # @todo Reconsider the strip, since it can remove some interesting urls
-            url_path = get_url_path(parsed_url)
+    # Run dedup in parallel (split by base URLs).
+    # @todo allow limiting the pool size.
+    # @todo Start using multiprocesses only from high amount of lines.
+    processes = min(len(urls_by_base_url), mp.cpu_count())
 
-            # If the URL doesn't have a path, just add it as is.
-            # @todo Some dups can still occur, handle it
-            if not url_path:
-                unique_urls.add(parsed_url)
-                continue
+    pool = mp.Pool(processes)
+    ddup_results = pool.map(ddup_urls_list, urls_by_base_url)
+    pool.close()
+    pool.join()
 
-            # Do not add paths to common files.
-            if url_path.endswith(ignored_suffixes):
-                continue
+    # "Merge" all the results to one list.
+    unique_urls = list(set().union(*ddup_results))
 
-            # Filter paths by custom Regex if set.
-            if filter_path and re.search(filter_path, url_path):
-                continue
+    # Sort the results.
+    unique_urls.sort()
 
-            # Add as-is paths that points to a specific web extension (e.g. html).
-            if url_path.endswith(web_suffixes):
-                unique_urls.add(parsed_url)
-                continue
-
-            # Do the more complicated ddup work.
-            # Get existing URL patterns from our unique patterns.
-            existing_pattern_urls = get_existing_pattern_urls(parsed_url, unique_urls)
-            if not existing_pattern_urls:
-                unique_urls.add(parsed_url)
-            elif parsed_url.query:
-                for u in existing_pattern_urls:
-                    # Favor URL patterns with params over those without params.
-                    if not u.query:
-                        unique_urls.remove(u)
-                        unique_urls.add(parsed_url)
-                        continue
-
-                    # Check if it has query params that are extra to the unique URL pattern.
-                    if is_all_params_exists(u, parsed_url):
-                        if has_more_params(u, parsed_url):
-                            unique_urls.remove(u)
-                            unique_urls.add(parsed_url)
-                            continue
-                    else:
-                        unique_urls.add(parsed_url)
-                        continue
-
+    # @todo Print the results within the processes (although it might create high IO throughput).
     print_results(unique_urls, output)
     return unique_urls
 
@@ -242,18 +249,16 @@ def print_results(uurls, output):
         try:
             f = open(output, "w")
 
-            for url in sorted(uurls):
-                u = url.geturl()
-                f.write(u + "\n")
-                print(u)
+            for url in uurls:
+                f.write(url + "\n")
+                print(url)
 
             f.close()
         except:
             print('[X] Failed to save the output to a file.')
     else:
-        for url in sorted(uurls):
-            u = url.geturl()
-            print(u)
+        for url in uurls:
+            print(url)
 
 
 def interactive():

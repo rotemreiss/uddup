@@ -4,6 +4,7 @@ The tool gets a list of URLs, and removes "duplicate" pages in the sense
 of URL patterns that are probably repetitive and points to the same web template.
 
 For example:
+
 ```
 https://www.example.com/product/123
 https://www.example.com/product/456

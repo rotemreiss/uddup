@@ -1,3 +1,4 @@
 colorama==0.4.3
 pytest==6.2.2
 win_unicode_console==0.5
+zipp>=3.19.1 # not directly required, pinned by Snyk to avoid a vulnerability

@@ -28,13 +28,13 @@ else:
 
 
 def banner():
-    print("""%s
-  _   _ ____      _             
- | | | |  _ \  __| |_   _ _ __  
- | | | | | | |/ _` | | | | '_ \ 
+    print(r"""%s
+  _   _ ____      _
+ | | | |  _ \  __| |_   _ _ __
+ | | | | | | |/ _` | | | | '_ \
  | |_| | |_| | (_| | |_| | |_) |
-  \___/|____/ \__,_|\__,_| .__/ 
-                         |_|    
+  \___/|____/ \__,_|\__,_| .__/
+                         |_|
 
               %s# Coded By @2RS3C
     %s""" % (Y, G, W))
@@ -141,6 +141,9 @@ def get_existing_pattern_urls(purl, uurls):
 
 
 def get_query_params_keys(parsed_url_query):
+    if not parsed_url_query:
+        return []
+
     keys = []
     qparams = parsed_url_query.split('&')
     for q in qparams:
